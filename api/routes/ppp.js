@@ -11,7 +11,6 @@ const path = require('path');
 
 function save(personName) {
     return new Promise(async (resolve, reject) => {
-        console.log("Getting...");
         const row = await database.get(db, 'SELECT (id) FROM teams ORDER BY memberCount');
         let teamId = row.id;
         database.run(db, 'INSERT INTO people (name, teamNumber) VALUES (?, ?)', [personName, teamId]);
@@ -23,6 +22,10 @@ function save(personName) {
 
 router.get('/', async function (req, res) {
     let personName = req.query.n;
+    if (!personName) {
+        res.send(res.render('index', { title: 'Welcome to PPP!' }));
+        return;
+    }
     let row = await database.get(db, 'SELECT teamNumber FROM people WHERE name = ?', [personName]);
     let teamName;
     if (typeof row === "undefined") row = await save(personName);
@@ -33,20 +36,21 @@ router.get('/', async function (req, res) {
 
 router.get('/person', function (req, res) {
     let personName = req.query.n;
-    database.get(db, 'SELECT teamNumber FROM people WHERE name = ?', [personName])
-        .then((row) => {
-            if (typeof row === "undefined") {
-                save(personName)
-                    .then(row => {
-                        res.send(row);
-                    })
-                    .catch(err => new Error(err));
-            } else {
-                let teamNumber = row.teamNumber;
+    if (!personName) {
+        res.send(res.render('index', { title: 'Welcome to PPP!' }));
+        return;
+    }
+    let row = await database.get(db, 'SELECT teamNumber FROM people WHERE name = ?', [personName]);
+    if (typeof row === "undefined") {
+        save(personName)
+            .then(row => {
                 res.send(row);
-            }
-        })
-        .catch(err => new Error(err));
+            })
+            .catch(err => new Error(err));
+    } else {
+        let teamNumber = row.teamNumber;
+        res.send(row);
+    }
 });
 
 router.get('/database/teams', (_, res) => database.all(db, 'SELECT * FROM teams').then(row => res.send(row)));
@@ -54,7 +58,6 @@ router.get('/database/people', (_, res) => database.all(db, 'SELECT * FROM peopl
 router.get(/database\/exports\/.+\.csv/,
     (req, res) => {
         var filename = req.path.split("/").pop();
-        console.log(filename, path.join(__dirname, '../data/exports'));
         res.sendFile(filename, { root: path.join(__dirname, '../data/exports') });
     }
 );
