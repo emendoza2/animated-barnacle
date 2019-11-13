@@ -21,7 +21,7 @@ function save(personName) {
 }
 
 router.get('/', async function (req, res) {
-    let personName = req.query.n;
+    let personName = req.query.n || req.query.tt_order_id;
     if (!personName) {
         res.send(res.render('index', { title: 'Welcome to PPP!' }));
         return;
