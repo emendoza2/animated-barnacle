@@ -57,18 +57,47 @@ function sendAsPNG(response, canvas) {
 
 };
 
-router.get('/', async function (req, res) {
-    let personName = req.query.n || req.query.tt_order_id;
-    if (!personName) {
+async function attendee(orderID, i) {
+    // Create an artificial attendee id
+    let attendeeID = orderID + i;
+
+    // Select row or save new attendee if not exists
+    let row = await database.get(db, 'SELECT teamNumber, foodChoice FROM people WHERE name = ?', [attendeeID]);
+    if (typeof row === "undefined") {
+        row = await save(attendeeID);
+    }
+
+    // Get team from database (TODO: make this more efficient)
+    let team = await database.get(db, 'SELECT name FROM teams WHERE id = ?', row.teamNumber);
+    let teamName = team.name;
+
+    let foodChoice = row.foodChoice;
+
+    return {teamName, foodChoice};
+}
+
+router.get('/order', async function (req, res) {
+    let query = req.query;
+    let orderID = query.tt_order_id;
+
+    // Send a blank page if the order id is not in the request
+    if (!orderID) {
         res.send(res.render('index', { title: 'Welcome to PPP!' }));
         return;
     }
-    let row = await database.get(db, 'SELECT teamNumber FROM people WHERE name = ?', [personName]);
-    let teamName;
-    if (typeof row === "undefined") row = await save(personName);
-    let team = await database.get(db, 'SELECT name FROM teams WHERE id = ?', row.teamNumber);
-    teamName = team.name;
-    res.render('ppp', { title: "Your PPP Team", teamName });
+
+    let willBringFood = query.tt_order_amount % 500 !== 0;
+    let numberOfAttendees = query.tt_order_amount / (willBringFood ? 120 : 500);
+    let attendees = [];
+
+    // Per attendee
+    for (let i = 0; i < numberOfAttendees; i++) {
+        let attendee = await attendee(orderID, i);
+        attendee.id = orderID + i;
+        attendees.push(attendee);
+    }
+
+    res.send(attendees);
 });
 
 router.get('/img', async function (req, res) {
@@ -116,9 +145,9 @@ router.get('/ticket', async function (req, res) {
     
     // Page background
     doc
-    .rect(50, 50, doc.page.width - 100, doc.page.height - 100)
-    .dash(5, { space: 10 })
-    .stroke();
+        .rect(50, 50, doc.page.width - 100, doc.page.height - 100)
+        .dash(5, { space: 10 })
+        .stroke();
     doc.on('pageAdded', () => {
         doc
         .rect(50, 50, doc.page.width - 100, doc.page.height - 100)
@@ -142,7 +171,7 @@ router.get('/ticket', async function (req, res) {
         .fillColor('black', 0.6)
         .moveDown(0.5)
         .font('Helvetica')
-        .text('You will need to present this slip to enter the event, along with your ticket which will be sent to your email.')
+        .text('You will need to present this slip to enter the event, along with your ticket which will be sent to your email. Save this by downloading it to your device or taking a screenshot.')
         
         // Draw first line
         .fontSize(18)
@@ -154,20 +183,8 @@ router.get('/ticket', async function (req, res) {
 
     // Per attendee
     for (let i = 0; i < numberOfAttendees; i++) {
-        // Create an artificial attendee id
-        let attendeeID = orderID + i;
-
-        // Select row or save new attendee if not exists
-        let row = await database.get(db, 'SELECT teamNumber, foodChoice FROM people WHERE name = ?', [attendeeID]);
-        if (typeof row === "undefined") {
-            row = await save(attendeeID);
-        }
-
-        // Get team from database (TODO: make this more efficient)
-        let team = await database.get(db, 'SELECT name FROM teams WHERE id = ?', row.teamNumber);
-        let teamName = team.name;
-
-        let foodChoice = row.foodChoice;
+        // Get teamName and foodChoice for attendee
+        let { teamName, foodChoice } = await attendee(orderID, i);
 
         // Write doc per person
         doc
