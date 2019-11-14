@@ -25,7 +25,7 @@ function select() {
         i++;
     }
     return i;
-}   
+}
 
 //TODO: FIX PROMISES
 // A super simple api that returns people's teams and automagically assigns them teams.
@@ -36,10 +36,10 @@ async function save(personName) {
         return new Promise(async (resolve, reject) => {
             const row = await database.get(db, 'SELECT (id) FROM teams ORDER BY memberCount');
             let teamId = row.id;
-            let foodChoice = foodRatios[select()][1];
+            let foodChoice = foodRatios[select()][0];
             database.run(db, 'INSERT INTO people (name, teamNumber, foodChoice) VALUES (?, ?, ?)', [personName, teamId, foodChoice]);
             database.run(db, 'UPDATE teams SET memberCount = memberCount + 1 WHERE id = ?', [teamId]);
-            let newRow = { newPerson: true, teamNumber: teamId };
+            let newRow = { newPerson: true, teamNumber: teamId, foodChoice };
             resolve(newRow);
         });
     }
@@ -96,46 +96,129 @@ router.get('/img', async function (req, res) {
 
 router.get('/ticket', async function (req, res) {
     let query = req.query;
-    let personName = query.tt_order_id;
-    console.log(query);
-    if (!personName) {
+    let orderID = query.tt_order_id;
+
+    // Send a blank page if the order id is not in the request
+    if (!orderID) {
         res.send(res.render('index', { title: 'Welcome to PPP!' }));
         return;
     }
-    let row = await database.get(db, 'SELECT teamNumber, foodChoice FROM people WHERE name = ?', [personName]);
-    if (typeof row === "undefined") {
-        row = await save(personName);
-    }
+
+    // Ticket tailor is hassle, so "guess" the ticket type and number of attendees based on the order amount
     let willBringFood = query.tt_order_amount % 500 !== 0;
-    let teamNumber = row.teamNumber;
-    let foodChoice = row.foodChoice;
+    let numberOfAttendees = query.tt_order_amount / (willBringFood ? 120 : 500);
+    
+    // Create pdf doc
     const doc = new PDFDocument;
+    
+    // Pipe to response
     doc.pipe(res);
+    
+    // Page background
+    doc
+    .rect(50, 50, doc.page.width - 100, doc.page.height - 100)
+    .dash(5, { space: 10 })
+    .stroke();
+    doc.on('pageAdded', () => {
+        doc
+        .rect(50, 50, doc.page.width - 100, doc.page.height - 100)
+        .dash(5, { space: 10 })
+        .stroke();
+    });
+    
+    // For whole slip
+    doc
+        .fontSize(10)
+        .font('Courier')
+        .text(query.tt_order_id, 75, 60, {
+            align: 'right'
+        })
 
-    console.log(doc, query);
-    doc.fontSize(48);
-    doc.font('Helvetica-Bold');
-    doc.text('Potluck Entrance Slip');
-    doc.fontSize(15);
-    doc.font('Helvetica');
-    doc.text('You will need to present this slip to enter the event');
-    doc.fontSize(36);
-    doc.font('Helvetica-Bold');
-    doc.text('You will be bringing: '+foodChoice);
+        .fontSize(36)
+        .font('Helvetica-Bold')
+        .text('PPP Entrance Slip', 75, 75)
 
-    //doc.image(
-    //	await fetch(query.qr_code_image)
-    //);
-    //doc.font('Helvetica');
-    //doc.fontSize(15);
-    //doc.text('TICKET CODE');
-    //doc.font('Courier');
-    //doc.fontSize(30);
-    //doc.text(query.ticket_code);
-    //doc.font('Helvetica');
-    //doc.fontSize(15);
-    //doc.text('TICKET TYPE');
-    //doc.font('Courier');
+        .fontSize(10)
+        .fillColor('black', 0.6)
+        .moveDown(0.5)
+        .font('Helvetica')
+        .text('You will need to present this slip to enter the event, along with your ticket which will be sent to your email.')
+        
+        // Draw first line
+        .fontSize(18)
+        .moveDown()
+        .moveTo(doc.x, doc.y - 5)
+        .lineTo(doc.x + doc.page.width - 150, doc.y - 5)
+        .dash(5, {space: 10})
+        .stroke();;
+
+    // Per attendee
+    for (let i = 0; i < numberOfAttendees; i++) {
+        // Create an artificial attendee id
+        let attendeeID = orderID + i;
+
+        // Select row or save new attendee if not exists
+        let row = await database.get(db, 'SELECT teamNumber, foodChoice FROM people WHERE name = ?', [attendeeID]);
+        if (typeof row === "undefined") {
+            row = await save(attendeeID);
+        }
+
+        // Get team from database (TODO: make this more efficient)
+        let team = await database.get(db, 'SELECT name FROM teams WHERE id = ?', row.teamNumber);
+        let teamName = team.name;
+
+        let foodChoice = row.foodChoice;
+
+        // Write doc per person
+        doc
+            .fontSize(12)
+            .fillColor('black', 0.6)
+            .moveDown()
+            .font('Helvetica-Bold')
+            .text('Person ID')
+            .moveDown(0.5)
+
+            .fontSize(18)
+            .font('Courier')
+            .fillColor('black', 1)
+            .text(query.tt_order_id + i)
+        
+            .fontSize(12)
+            .fillColor('black', 0.6)
+            .font('Helvetica-Bold')
+            .moveDown()
+            .text('PPP TEAM')
+            .moveDown(0.5)
+    
+            .fontSize(18)
+            .font('Courier')
+            .fillColor('black', 1)
+            .text(teamName)
+        
+        // Potluck to bring for those who will bring food
+        if (willBringFood) {
+            doc
+                .moveDown()
+                .fillColor('black', 0.6)
+                .fontSize(12)
+                .font('Helvetica-Bold')
+                .text('POTLUCK TO BRING')
+                .moveDown(0.5)
+    
+                .fontSize(18)
+                .fillColor('black', 1)
+                .font('Courier')
+                .text(foodChoice)
+        }
+
+        doc
+            .moveDown()
+            .moveTo(doc.x, doc.y - 5)
+            .lineTo(doc.x + doc.page.width - 150, doc.y - 5)
+            .dash(5, {space: 10})
+            .stroke();
+    }
+
     doc.end();
 });
 
