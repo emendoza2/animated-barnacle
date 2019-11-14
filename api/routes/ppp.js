@@ -86,8 +86,8 @@ router.get('/order', async function (req, res) {
         return;
     }
 
-    let willBringFood = query.tt_order_amount % 500 !== 0;
-    let numberOfAttendees = query.tt_order_amount / (willBringFood ? 120 : 500);
+    let willBringFood = query.tt_order_value % 500 !== 0;
+    let numberOfAttendees = query.tt_order_value / (willBringFood ? 120 : 500);
     let attendees = [];
 
     // Per attendee
@@ -133,9 +133,9 @@ router.get('/ticket', async function (req, res) {
         return;
     }
 
-    // Ticket tailor is hassle, so "guess" the ticket type and number of attendees based on the order amount
-    let willBringFood = query.tt_order_amount % 500 !== 0;
-    let numberOfAttendees = query.tt_order_amount / (willBringFood ? 120 : 500);
+    // Ticket tailor is hassle, so "guess" the ticket type and number of attendees based on the order value
+    let willBringFood = query.tt_order_value % 500 !== 0;
+    let numberOfAttendees = query.tt_order_value / (willBringFood ? 120 : 500);
     
     // Create pdf doc
     const doc = new PDFDocument;
