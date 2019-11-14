@@ -6,6 +6,7 @@ const database = require('../lib/db');
 const path = require('path');
 const { createCanvas, loadImage } = require('canvas');
 const PDFDocument = require('pdfkit');
+const fs = require('fs');
 
 const foodRatios = [
     ["Pizza", 0.35],
@@ -95,7 +96,8 @@ router.get('/img', async function (req, res) {
 
 router.get('/ticket', async function (req, res) {
     let query = req.query;
-    let personName = query.name;
+    let personName = query.tt_order_id;
+    console.log(query);
     if (!personName) {
         res.send(res.render('index', { title: 'Welcome to PPP!' }));
         return;
@@ -103,16 +105,37 @@ router.get('/ticket', async function (req, res) {
     let row = await database.get(db, 'SELECT teamNumber, foodChoice FROM people WHERE name = ?', [personName]);
     if (typeof row === "undefined") {
         row = await save(personName);
-    } else {
-        let teamNumber = row.teamNumber;
-        let foodChoice = row.foodChoice;
     }
+    let willBringFood = query.tt_order_amount % 500 !== 0;
+    let teamNumber = row.teamNumber;
+    let foodChoice = row.foodChoice;
     const doc = new PDFDocument;
     doc.pipe(res);
+
+    console.log(doc, query);
     doc.fontSize(48);
     doc.font('Helvetica-Bold');
-    doc.text('Ticket for '+req.query.name);
-    
+    doc.text('Potluck Entrance Slip');
+    doc.fontSize(15);
+    doc.font('Helvetica');
+    doc.text('You will need to present this slip to enter the event');
+    doc.fontSize(36);
+    doc.font('Helvetica-Bold');
+    doc.text('You will be bringing: '+foodChoice);
+
+    //doc.image(
+    //	await fetch(query.qr_code_image)
+    //);
+    //doc.font('Helvetica');
+    //doc.fontSize(15);
+    //doc.text('TICKET CODE');
+    //doc.font('Courier');
+    //doc.fontSize(30);
+    //doc.text(query.ticket_code);
+    //doc.font('Helvetica');
+    //doc.fontSize(15);
+    //doc.text('TICKET TYPE');
+    //doc.font('Courier');
     doc.end();
 });
 
