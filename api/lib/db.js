@@ -19,6 +19,7 @@ database.init = function () {
     });
 
     db.close();
+    return "Done";
 };
 
 database.erase = function () {

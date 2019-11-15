@@ -312,9 +312,11 @@ router.get('/person', async function (req, res) {
 
 router.get('/database/teams', (_, res) => database.all(db, 'SELECT * FROM teams').then(row => res.send(row)));
 router.get('/database/people', (_, res) => database.all(db, 'SELECT * FROM people').then(row => res.send(row)));
+router.get('/database/init', (_, res) => database.init());
 router.get(/database\/exports\/.+\.csv/,
     (req, res) => {
         var filename = req.path.split("/").pop();
+        database.export();
         res.sendFile(filename, { root: path.join(__dirname, '../data/exports') });
     }
 );
