@@ -137,6 +137,9 @@ router.get('/ticket', async function (req, res) {
     let willBringFood = query.tt_order_value % 500 !== 0;
     let numberOfAttendees = query.tt_order_value / (willBringFood ? 120 : 500);
     
+    // For test cases
+    if (numberOfAttendees === 0) numberOfAttendees = 1;
+
     // Create pdf doc
     const doc = new PDFDocument;
     
