@@ -128,7 +128,7 @@ router.get('/order', async function (req, res) {
     }
 
     let willBringFood = query.tt_order_value % 500 !== 0;
-    let numberOfAttendees = query.tt_order_value / (willBringFood ? 120 : 500);
+    let numberOfAttendees = query.tt_order_value / (willBringFood ? 100 : 500);
     let attendees = [];
 
     // Per attendee
@@ -176,7 +176,7 @@ router.get('/ticket', async function (req, res) {
 
     // Ticket tailor is hassle, so "guess" the ticket type and number of attendees based on the order value
     let willBringFood = query.tt_order_value % 500 !== 0;
-    let numberOfAttendees = query.tt_order_value / (willBringFood ? 120 : 500);
+    let numberOfAttendees = query.tt_order_value / (willBringFood ? 100 : 500);
     
     // For test cases
     if (numberOfAttendees === 0) numberOfAttendees = 1;
