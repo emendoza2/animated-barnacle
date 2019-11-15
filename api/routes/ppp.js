@@ -17,6 +17,24 @@ const foodRatios = [
     ["Pineapple", 0]
 ];
 
+const foodSpecifications = {
+    "Pizza": {
+        description: "at least one 18 inch pizza", 
+        example: "An S&R or Landers full pizza or two smaller 12-inch pizzas"
+    },
+    "Pasta": {
+        description: "at least 650 grams or 6 cups of pasta",
+        homemade: true
+    },
+    "Chicken": {
+        description: "at least 8 pieces of chicken", 
+        homemade: true
+    },
+    "Dessert": {
+        description: "at least 2 dozen donuts"
+    }
+};
+
 function select() {
     let randomNumber = Math.random();
     let i = 0;
@@ -74,6 +92,29 @@ async function attendee(orderID, i) {
     let foodChoice = row.foodChoice;
 
     return {teamName, foodChoice};
+}
+
+async function getPerson(id) {
+    if (!id) {
+        res.send(res.render('index', { title: 'Welcome to PPP!' }));
+        return;
+    }
+
+    // Select row or save new attendee if not exists
+    let row = await database.get(db, `
+        SELECT people.id, people.name, people.teamNumber, people.foodChoice, team.name AS teamName
+        FROM people INNER JOIN teamName WHERE name = ?`, [id]);
+    if (typeof row === "undefined") {
+        row = await save(id);
+    }
+
+    // Get team from database (TODO: make this more efficient)
+    let team = await database.get(db, 'SELECT name FROM teams WHERE id = ?', row.teamNumber);
+    let teamName = team.name;
+
+    let foodChoice = row.foodChoice;
+
+    return Object.assign(row, {teamName, foodChoice});
 }
 
 router.get('/order', async function (req, res) {
@@ -139,6 +180,8 @@ router.get('/ticket', async function (req, res) {
     
     // For test cases
     if (numberOfAttendees === 0) numberOfAttendees = 1;
+
+    console.log(numberOfAttendees); 
 
     // Create pdf doc
     const doc = new PDFDocument;
@@ -229,6 +272,12 @@ router.get('/ticket', async function (req, res) {
                 .fillColor('black', 1)
                 .font('Courier')
                 .text(foodChoice)
+
+                .fontSize(12)
+                .moveDown(0.5)
+                .text((foodSpecifications[foodChoice].description || "") + (foodSpecifications[foodChoice].homemade && " (homemade welcome!)" || ""))
+                .text(foodSpecifications[foodChoice].example || "")
+                .fontSize(18);
         }
 
         doc
