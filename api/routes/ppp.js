@@ -248,7 +248,7 @@ router.get('/person', async function (req, res) {
         res.send(res.render('index', { title: 'Welcome to PPP!' }));
         return;
     }
-    let row = await database.get(db, 'SELECT teamNumber FROM people WHERE name = ?', [personName]);
+    let row = await database.get(db, 'SELECT * FROM people WHERE name = ?', [personName]);
     if (typeof row === "undefined") {
         save(personName)
             .then(row => {
