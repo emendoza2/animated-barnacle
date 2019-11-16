@@ -291,6 +291,10 @@ router.get('/ticket', async function (req, res) {
     doc.end();
 });
 
+router.get('/admin', function(req, res) {
+    res.render('admin');
+});
+
 router.get('/person', async function (req, res) {
     let personName = req.query.n;
     if (!personName) {

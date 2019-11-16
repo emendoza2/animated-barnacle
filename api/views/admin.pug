@@ -1,0 +1,16 @@
+extends layout
+
+block content
+    h1 Input details here to get order entrance slips
+    form(method="GET", action="/ppp/ticket")
+        label(for="tt_order_id") Order ID in Ticket Tailor
+        br
+        input(name="tt_order_id", type="text")
+        br
+        br
+        label(for="tt_order_value") Order value / amount in Ticket Tailor, e.g. 500 for regular tickets and 100 for potluck tickets
+        br
+        input(name="tt_order_value", type="text")
+        br 
+        input(type="submit")
+        
