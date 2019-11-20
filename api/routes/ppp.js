@@ -52,7 +52,7 @@ function select() {
 async function save(personName, orderValue) {
     try {
         return new Promise(async (resolve, reject) => {
-            const row = await database.get(db, 'SELECT (id) FROM teams ORDER BY memberCount');
+            const row = await database.get(db, 'SELECT teamNumber, count(*) teamCount FROM "people" GROUP BY teamNumber ORDER BY teamCount');
             let teamId = row.id;
             let foodChoice = "N/A";
             if (orderValue % 500 === 0) foodChoice = foodRatios[select()][0];
