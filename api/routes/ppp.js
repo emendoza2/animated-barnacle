@@ -53,7 +53,7 @@ async function save(personName, orderValue) {
     try {
         return new Promise(async (resolve, reject) => {
             const row = await database.get(db, 'SELECT teamNumber, count(*) teamCount FROM "people" GROUP BY teamNumber ORDER BY teamCount');
-            let teamId = row.id;
+            let teamId = row.teamNumber;
             let foodChoice = "N/A";
             if (orderValue % 500 !== 0) foodChoice = foodRatios[select()][0];
             database.run(db, 'INSERT INTO people (name, teamNumber, foodChoice) VALUES (?, ?, ?)', [personName, teamId, foodChoice]);
