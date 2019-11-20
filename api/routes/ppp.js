@@ -55,7 +55,7 @@ async function save(personName, orderValue) {
             const row = await database.get(db, 'SELECT teamNumber, count(*) teamCount FROM "people" GROUP BY teamNumber ORDER BY teamCount');
             let teamId = row.id;
             let foodChoice = "N/A";
-            if (orderValue % 500 === 0) foodChoice = foodRatios[select()][0];
+            if (orderValue % 500 !== 0) foodChoice = foodRatios[select()][0];
             database.run(db, 'INSERT INTO people (name, teamNumber, foodChoice) VALUES (?, ?, ?)', [personName, teamId, foodChoice]);
             database.run(db, 'UPDATE teams SET memberCount = memberCount + 1 WHERE id = ?', [teamId]);
             let newRow = { newPerson: true, teamNumber: teamId, foodChoice };
