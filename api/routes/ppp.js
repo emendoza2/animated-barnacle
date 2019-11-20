@@ -49,12 +49,13 @@ function select() {
 // A super simple api that returns people's teams and automagically assigns them teams.
 
 
-async function save(personName) {
+async function save(personName, orderValue) {
     try {
         return new Promise(async (resolve, reject) => {
             const row = await database.get(db, 'SELECT (id) FROM teams ORDER BY memberCount');
             let teamId = row.id;
-            let foodChoice = foodRatios[select()][0];
+            let foodChoice = "N/A";
+            if (orderValue % 500 === 0) foodChoice = foodRatios[select()][0];
             database.run(db, 'INSERT INTO people (name, teamNumber, foodChoice) VALUES (?, ?, ?)', [personName, teamId, foodChoice]);
             database.run(db, 'UPDATE teams SET memberCount = memberCount + 1 WHERE id = ?', [teamId]);
             let newRow = { newPerson: true, teamNumber: teamId, foodChoice };
@@ -75,14 +76,14 @@ function sendAsPNG(response, canvas) {
 
 };
 
-async function attendee(orderID, i) {
+async function attendee(orderID, orderValue, i) {
     // Create an artificial attendee id
     let attendeeID = orderID + i;
 
     // Select row or save new attendee if not exists
     let row = await database.get(db, 'SELECT teamNumber, foodChoice FROM people WHERE name = ?', [attendeeID]);
     if (typeof row === "undefined") {
-        row = await save(attendeeID);
+        row = await save(attendeeID, orderValue);
     }
 
     // Get team from database (TODO: make this more efficient)
@@ -94,32 +95,33 @@ async function attendee(orderID, i) {
     return {teamName, foodChoice};
 }
 
-async function getPerson(id) {
-    if (!id) {
-        res.send(res.render('index', { title: 'Welcome to PPP!' }));
-        return;
-    }
+// async function getPerson(id) {
+//     if (!id) {
+//         res.send(res.render('index', { title: 'Welcome to PPP!' }));
+//         return;
+//     }
 
-    // Select row or save new attendee if not exists
-    let row = await database.get(db, `
-        SELECT people.id, people.name, people.teamNumber, people.foodChoice, team.name AS teamName
-        FROM people INNER JOIN teamName WHERE name = ?`, [id]);
-    if (typeof row === "undefined") {
-        row = await save(id);
-    }
+//     // Select row or save new attendee if not exists
+//     let row = await database.get(db, `
+//         SELECT people.id, people.name, people.teamNumber, people.foodChoice, team.name AS teamName
+//         FROM people INNER JOIN teamName WHERE name = ?`, [id]);
+//     if (typeof row === "undefined") {
+//         row = await save(id);
+//     }
 
-    // Get team from database (TODO: make this more efficient)
-    let team = await database.get(db, 'SELECT name FROM teams WHERE id = ?', row.teamNumber);
-    let teamName = team.name;
+//     // Get team from database (TODO: make this more efficient)
+//     let team = await database.get(db, 'SELECT name FROM teams WHERE id = ?', row.teamNumber);
+//     let teamName = team.name;
 
-    let foodChoice = row.foodChoice;
+//     let foodChoice = row.foodChoice;
 
-    return Object.assign(row, {teamName, foodChoice});
-}
+//     return Object.assign(row, {teamName, foodChoice});
+// } // DEPRECATED DON'T USE UNLESS save() is fixed here!!!
 
 router.get('/order', async function (req, res) {
     let query = req.query;
     let orderID = query.tt_order_id;
+    let orderValue = query.tt_order_value;
 
     // Send a blank page if the order id is not in the request
     if (!orderID) {
@@ -133,7 +135,7 @@ router.get('/order', async function (req, res) {
 
     // Per attendee
     for (let i = 0; i < numberOfAttendees; i++) {
-        let attendee = await attendee(orderID, i);
+        let attendee = await attendee(orderID, orderValue, i);
         attendee.id = orderID + i;
         attendees.push(attendee);
     }
@@ -141,32 +143,33 @@ router.get('/order', async function (req, res) {
     res.send(attendees);
 });
 
-router.get('/img', async function (req, res) {
-    let personName = req.query.n || req.query.tt_order_id;
-    if (!personName) {
-        res.send(res.render('index', { title: 'Welcome to PPP!' }));
-        return;
-    }
-    let row = await database.get(db, 'SELECT teamNumber FROM people WHERE name = ?', [personName]);
-    let teamName;
-    if (typeof row === "undefined") row = await save(personName);
-    let team = await database.get(db, 'SELECT name FROM teams WHERE id = ?', row.teamNumber);
-    teamName = team.name;
-    var canvas = createCanvas(200, 50);
-    var context = canvas.getContext("2d");
-    context.fillStyle = "#FFF";
-    context.fillRect(0, 0, 200, 100);
-    context.fillStyle = "#000";
-    context.font = "12px Helvetica";
-    context.textAlign = "left";
-    context.textBaseline = "middle";
-    context.fillText(teamName, 10, canvas.height / 2);
-    sendAsPNG(res, canvas);
-});
+// router.get('/img', async function (req, res) {
+//     let personName = req.query.n || req.query.tt_order_id;
+//     if (!personName) {
+//         res.send(res.render('index', { title: 'Welcome to PPP!' }));
+//         return;
+//     }
+//     let row = await database.get(db, 'SELECT teamNumber FROM people WHERE name = ?', [personName]);
+//     let teamName;
+//     if (typeof row === "undefined") row = await save(personName);
+//     let team = await database.get(db, 'SELECT name FROM teams WHERE id = ?', row.teamNumber);
+//     teamName = team.name;
+//     var canvas = createCanvas(200, 50);
+//     var context = canvas.getContext("2d");
+//     context.fillStyle = "#FFF";
+//     context.fillRect(0, 0, 200, 100);
+//     context.fillStyle = "#000";
+//     context.font = "12px Helvetica";
+//     context.textAlign = "left";
+//     context.textBaseline = "middle";
+//     context.fillText(teamName, 10, canvas.height / 2);
+//     sendAsPNG(res, canvas);
+// });
 
 router.get('/ticket', async function (req, res) {
     let query = req.query;
     let orderID = query.tt_order_id;
+    let orderValue = query.tt_order_value;
 
     // Send a blank page if the order id is not in the request
     if (!orderID) {
@@ -230,7 +233,7 @@ router.get('/ticket', async function (req, res) {
     // Per attendee
     for (let i = 0; i < numberOfAttendees; i++) {
         // Get teamName and foodChoice for attendee
-        let { teamName, foodChoice } = await attendee(orderID, i);
+        let { teamName, foodChoice } = await attendee(orderID, orderValue, i);
 
         // Write doc per person
         doc
@@ -296,14 +299,15 @@ router.get('/admin', function(req, res) {
 });
 
 router.get('/person', async function (req, res) {
-    let personName = req.query.n;
+    let personName = req.query.n || req.query.tt_order_id;
+    let orderValue = req.query.tt_order_value;
     if (!personName) {
         res.send(res.render('index', { title: 'Welcome to PPP!' }));
         return;
     }
     let row = await database.get(db, 'SELECT * FROM people WHERE name = ?', [personName]);
     if (typeof row === "undefined") {
-        save(personName)
+        save(personName, orderValue)
             .then(row => {
                 res.send(row);
             })
