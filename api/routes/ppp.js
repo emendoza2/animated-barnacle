@@ -19,19 +19,18 @@ const foodRatios = [
 
 const foodSpecifications = {
     "Pizza": {
-        description: "at least one 18 inch pizza", 
-        example: "An S&R or Landers full pizza or two smaller 12-inch pizzas"
+        description: "Bring any flavor of Pizza that is 12-18 inches in diameter",
     },
     "Pasta": {
-        description: "at least 650 grams or 6 cups of pasta",
+        description: "Bring any type/flavor of Pasta\nGood for at least 5 servings",
         homemade: true
     },
     "Chicken": {
-        description: "at least 8 pieces of chicken", 
+        description: "Bring 8 pieces of Fried Chicken (Drumsticks, Thighs, Chops, Wings)", 
         homemade: true
     },
     "Dessert": {
-        description: "at least 2 dozen donuts"
+        description: "Bring at least 18 pcs donuts (any flavor/s)"
     }
 };
 
@@ -64,6 +63,16 @@ async function save(personName, orderValue) {
     }
     catch (err) {
         return console.log(err);
+    }
+}
+
+async function update(orderID, params) {
+    try {
+        await database.run(db, 'UPDATE people SET data = ? WHERE name = ?', [params, orderID]);
+        return "Done";
+    }
+    catch (err) {
+        return err;
     }
 }
 
@@ -296,6 +305,11 @@ router.get('/ticket', async function (req, res) {
 
 router.get('/admin', function(req, res) {
     res.render('admin');
+});
+
+router.get('/save', async function (req, res) {
+    let query = req.query;
+    update()
 });
 
 router.get('/person', async function (req, res) {
